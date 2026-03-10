@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATH.UNIVERSE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --bg: #050505; --card: #0f172a; --text: #f8fafc; --accent: #38bdf8; --border: #1e293b;
+        }
+
+        /* Theme Definitions */
+        .theme-cyberpunk { --bg: #09090b; --card: #18181b; --text: #fdf2f8; --accent: #f472b6; --border: #3f3f46; }
+        .theme-light { --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --accent: #2563eb; --border: #e2e8f0; }
+        .theme-amoled { --bg: #000000; --card: #000000; --text: #ffffff; --accent: #ffffff; --border: #222222; }
+
+        body { 
+            font-family: 'Space Mono', monospace; 
+            background: var(--bg); 
+            color: var(--text); 
+            transition: all 0.3s ease;
+        }
+        
+        .glass { background: var(--card); border: 1px solid var(--border); backdrop-filter: blur(10px); }
+        .btn-grade { border: 1px solid var(--border); transition: 0.2s; background: var(--card); }
+        .btn-grade:hover { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); color: var(--accent); }
+        
+        input { background: var(--bg); border: 2px solid var(--border); color: var(--accent); text-align: center; }
+        input:focus { border-color: var(--accent); outline: none; }
+        
+        .accent-text { color: var(--accent); }
+        .accent-bg { background-color: var(--accent); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+
+    <!-- Navbar -->
+    <nav class="w-full max-w-6xl flex justify-between items-center py-6 px-4 border-b border-white/10 sticky top-0 z-50 glass">
+        <h1 class="text-xl font-bold tracking-tighter uppercase">MATH.<span class="accent-text">PRO</span></h1>
+        
+        <div class="flex items-center gap-6">
+            <!-- Theme Switcher -->
+            <select id="themeSelector" onchange="changeTheme(this.value)" class="bg-transparent text-[10px] uppercase font-bold border border-white/20 p-1 rounded cursor-pointer">
+                <option value="default">Matrix (Dark)</option>
+                <option value="cyberpunk">Cyberpunk</option>
+                <option value="light">Academic (Light)</option>
+                <option value="amoled">Amoled</option>
+            </select>
+            
+            <div id="userDisplay" class="hidden text-[10px] opacity-70 tracking-widest font-bold">
+                USER: <span id="usernameVal" class="accent-text">---</span> | STREAK: <span id="streakVal" class="accent-text">0</span>
+            </div>
+            
+            <button onclick="logout()" id="logoutBtn" class="hidden text-[10px] text-red-500 underline">EXIT</button>
+        </div>
+    </nav>
+
+    <div id="app" class="w-full max-w-5xl p-6 mt-10">
+        
+        <!-- Login View -->
+        <div id="loginView" class="max-w-md mx-auto glass p-10 rounded-3xl text-center shadow-2xl">
+            <h2 class="text-2xl font-bold mb-2">INITIALIZE SESSION</h2>
+            <p class="text-[10px] opacity-50 mb-8 uppercase">Your progress will be saved locally.</p>
+            <input type="text" id="usernameInput" class="w-full p-4 rounded-xl mb-4 text-xl" placeholder="ENTER CODENAME">
+            <button onclick="login()" class="w-full accent-bg text-black font-black py-4 rounded-xl hover:opacity-90 transition">ACCESS SYSTEM</button>
+        </div>
+
+        <!-- Grade Selection (Hidden until login) -->
+        <div id="menuView" class="hidden animate-in fade-in duration-500">
+            <div class="mb-10 text-center">
+                <h2 class="text-4xl font-black mb-2 uppercase">Select Level</h2>
+                <p id="welcomeMsg" class="text-sm opacity-50 uppercase tracking-widest"></p>
+            </div>
+            <div id="gradeGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3"></div>
+        </div>
+
+        <!-- Problem Arena (Hidden until grade select) -->
+        <div id="arenaView" class="hidden max-w-2xl mx-auto py-10 animate-in zoom-in duration-300">
+            <div class="glass p-12 rounded-3xl text-center relative overflow-hidden">
+                <div id="gradeLabel" class="absolute top-4 left-6 text-[9px] accent-text font-bold uppercase tracking-widest"></div>
+                
+                <div id="mathDisplay" class="text-5xl md:text-7xl font-bold my-12 min-h-[140px] flex items-center justify-center"></div>
+
+                <div class="space-y-6">
+                    <input type="text" id="ansInput" class="text-4xl p-5 w-full rounded-2xl" placeholder="RESULT" autocomplete="off">
+                    <button onclick="checkAnswer()" class="w-full accent-bg text-black py-6 rounded-2xl font-black text-lg transition-all active:scale-95">VERIFY SOLUTION</button>
+                    <div id="feedback" class="h-6 font-bold uppercase text-xs tracking-widest mt-4"></div>
+                </div>
+
+                <button onclick="backToMenu()" class="mt-12 text-gray-500 hover:text-white text-[10px] uppercase underline">Return to Modules</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Curriculum Config ---
+        const curriculum = {
+            'K': { name: 'Counting', focus: '1-10 sums', logic: (r) => { let a=r(1,5), b=r(1,4); return [`${a}+${b}`, a+b]; } },
+            '1': { name: 'Number Sense', focus: '10s and 1s', logic: (r) => { let t=r(1,5)*10, o=r(1,9); return [`${t}+${o}`, t+o]; } },
+            '2': { name: 'Regrouping', focus: 'Subtraction', logic: (r) => { let a=r(50,99), b=r(15,49); return [`${a}-${b}`, a-b]; } },
+            '3': { name: 'Multiplication', focus: 'Tables 6-12', logic: (r) => { let a=r(6,12), b=r(6,12); return [`${a}\\times${b}`, a*b]; } },
+            '4': { name: 'Division', focus: 'Inverse Ops', logic: (r) => { let a=r(6,12), b=r(12,20); return [`${a*b}\\div${a}`, b]; } },
+            '7': { name: 'Algebra', focus: 'Solve X', logic: (r) => { let x=r(2,10), c=r(1,15); return [`2x+${c}=${(2*x)+c}`, x]; } },
+            '10': { name: 'Geometry', focus: 'Pythagoras', logic: (r) => { return [`a=3, b=4, c=?`, 5]; } },
+            '12': { name: 'Calculus', focus: 'Power Rule', logic: (r) => { let p=r(2,4); return [`\\frac{d}{dx} x^{${p}} \\text{ at } x=1`, p]; } }
+        };
+
+        // --- System State ---
+        let userData = { username: "", streak: 0, theme: "default" };
+        let activeGrade = null;
+        let expectedAns = null;
+
+        // --- Auth Logic ---
+        function login() {
+            const user = document.getElementById('usernameInput').value.trim();
+            if(!user) return alert("Enter a codename.");
+            
+            // Check LocalStorage
+            const saved = localStorage.getItem(`math_pro_${user}`);
+            if(saved) {
+                userData = JSON.parse(saved);
+            } else {
+                userData = { username: user, streak: 0, theme: "default" };
+                saveUser();
+            }
+            
+            showDashboard();
+        }
+
+        function saveUser() {
+            localStorage.setItem(`math_pro_${userData.username}`, JSON.stringify(userData));
+        }
+
+        function showDashboard() {
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('menuView').classList.remove('hidden');
+            document.getElementById('userDisplay').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('usernameVal').innerText = userData.username;
+            document.getElementById('streakVal').innerText = userData.streak;
+            document.getElementById('welcomeMsg').innerText = `Welcome back, ${userData.username}`;
+            changeTheme(userData.theme);
+            document.getElementById('themeSelector').value = userData.theme;
+        }
+
+        function logout() {
+            location.reload();
+        }
+
+        // --- Theme Engine ---
+        function changeTheme(theme) {
+            document.body.className = "min-h-screen flex flex-col items-center theme-" + theme;
+            userData.theme = theme;
+            saveUser();
+        }
+
+        // --- Math Engine ---
+        function initGrades() {
+            const grid = document.getElementById('gradeGrid');
+            Object.keys(curriculum).forEach(g => {
+                const btn = document.createElement('div');
+                btn.className = "btn-grade p-6 rounded-xl cursor-pointer text-center";
+                btn.innerHTML = `<div class="text-3xl font-black">${g}</div><div class="text-[8px] uppercase mt-1 opacity-50">${curriculum[g].name}</div>`;
+                btn.onclick = () => launchArena(g);
+                grid.appendChild(btn);
+            });
+        }
+
+        function launchArena(g) {
+            activeGrade = g;
+            document.getElementById('menuView').classList.add('hidden');
+            document.getElementById('arenaView').classList.remove('hidden');
+            document.getElementById('gradeLabel').innerText = `GRADE ${g}: ${curriculum[g].focus}`;
+            generateProblem();
+        }
+
+        function backToMenu() {
+            document.getElementById('menuView').classList.remove('hidden');
+            document.getElementById('arenaView').classList.add('hidden');
+        }
+
+        const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        function generateProblem() {
+            const display = document.getElementById('mathDisplay');
+            const input = document.getElementById('ansInput');
+            const fb = document.getElementById('feedback');
+            input.value = ''; fb.innerText = '';
+            
+            const logic = curriculum[activeGrade]?.logic || curriculum['K'].logic;
+            const [tex, ans] = logic(r);
+            expectedAns = ans;
+
+            katex.render(tex, display, { displayMode: true });
+            input.focus();
+        }
+
+        function checkAnswer() {
+            const userVal = parseFloat(document.getElementById('ansInput').value);
+            const fb = document.getElementById('feedback');
+            
+            if (userVal === expectedAns) {
+                fb.innerText = "SOLUTION VALID";
+                fb.className = "accent-text h-6 font-bold uppercase text-xs tracking-widest mt-4";
+                userData.streak++;
+                document.getElementById('streakVal').innerText = userData.streak;
+                saveUser();
+                setTimeout(generateProblem, 1000);
+            } else {
+                fb.innerText = `ERROR: REQUIRED ${expectedAns}`;
+                fb.className = "text-red-500 h-6 font-bold uppercase text-xs tracking-widest mt-4";
+                userData.streak = 0;
+                document.getElementById('streakVal').innerText = 0;
+                saveUser();
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('keypress', (e) => { if(e.key === 'Enter') checkAnswer(); });
+        window.onload = initGrades;
+    </script>
+</body>
+</html>
